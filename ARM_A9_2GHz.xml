@@ -7,12 +7,12 @@
 		<param name="number_of_cores" value="2"/>
 		<param name="number_of_L1Directories" value="2"/>
 		<param name="number_of_L2Directories" value="0"/>
-		<param name="number_of_L2s" value="2"/> <!-- This number means how many L2 clusters in each cluster there can be multiple banks/ports -->
-		<param name="Private_L2" value="1"/><!--1 Private, 0 shared/coherent -->
+		<param name="number_of_L2s" value="0"/> <!-- This number means how many L2 clusters in each cluster there can be multiple banks/ports -->
+		<param name="Private_L2" value="0"/><!--1 Private, 0 shared/coherent -->
 		<param name="number_of_L3s" value="0"/> <!-- This number means how many L3 clusters -->
 		<param name="number_of_NoCs" value="1"/>
-		<param name="homogeneous_cores" value="0"/><!--1 means homo -->
-		<param name="homogeneous_L2s" value="0"/>
+		<param name="homogeneous_cores" value="1"/><!--1 means homo -->
+		<param name="homogeneous_L2s" value="1"/>
 		<param name="homogeneous_L1Directories" value="1"/>
 		<param name="homogeneous_L2Directories" value="1"/>
 		<param name="homogeneous_L3s" value="1"/>
@@ -263,10 +263,7 @@
 				<stat name="read_accesses" value="400000"/> <!--See IFU code for guideline -->
 				<stat name="write_accesses" value="0"/>
 			</component>
-			
 	</component>
-
-
 		<component id="system.L1Directory0" name="L1Directory0">
 				<param name="Directory_type" value="0"/>
 			    <!--0 cam based shadowed tag. 1 directory cache -->	
@@ -320,12 +317,12 @@
 				<!-- number of r, w, and rw ports -->
 				<param name="device_type" value="0"/>
 				<stat name="read_accesses" value="200000"/>
-				<stat name="write_accesses" value="272766"/>
-				<stat name="read_misses" value="16632"/>
-				<stat name="write_misses" value="1843"/>
+				<stat name="write_accesses" value="27276"/>
+				<stat name="read_misses" value="1632"/>
+				<stat name="write_misses" value="183"/>
 				<stat name="conflicts" value="0"/>	
 			    <stat name="duty_cycle" value="1.0"/>	
-		</component>	
+		</component>
 		
 <!--**********************************************************************-->
 <component id="system.L30" name="L30">

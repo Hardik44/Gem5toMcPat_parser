@@ -205,11 +205,11 @@ def readWriteConfigValue(configFile):
     defaultChangedConfigValue = {}
 
     defaultChangedConfigValue["system.number_of_cores"] = str(noCores)      #If you have homogeneous core make it 1
-    defaultChangedConfigValue["system.number_of_L2s"] = str(noCores)
-    defaultChangedConfigValue["system.Private_L2"] = "1"                    #If you don't have L2 cache in each core make it 0 and make homo to 1
+    defaultChangedConfigValue["system.number_of_L2s"] = "0"
+    defaultChangedConfigValue["system.Private_L2"] = "0"                    #If you don't have L2 cache in each core make it 0 and make homo to 1
     defaultChangedConfigValue["system.homogeneous_cores"] = "0"             #we don't have homogeneous core otherwise make it 1
     defaultChangedConfigValue["system.homogeneous_L2s"] = "0"
-    defaultChangedConfigValue["system.number_of_L3s"] = "1"                 #If there are more than one L3 cache then change it, also add loop in changeXML() and writeStatValue()
+    defaultChangedConfigValue["system.number_of_L3s"] = "0"                 #If there are more than one L3 cache then change it, also add loop in changeXML() and writeStatValue()
     defaultChangedConfigValue["system.mc.number_mcs"] = "1"                 #If more than one change it
     defaultChangedConfigValue["system.number_of_NoCs"] = "0"
     defaultChangedConfigValue["system.number_of_L1Directories"] = "0"
@@ -530,6 +530,9 @@ def readWriteConfigValue(configFile):
                         ans += str(1)
                         print "%s not found in config file setting default value to 1..." %x
                 else:
+                    if findMltVal is None:
+                        findMltVal = 0
+
                     ans += str(findMltVal)
                 ans += ","
 
@@ -544,7 +547,8 @@ def readWriteConfigValue(configFile):
                 val = defaultChangedConfigValue[mapping[name]]
                 child.attrib['value'] = str(val)
             else:
-                print "%s Not found in config file" %name
+                print "%s Not found in config file setting 0" % name
+                child.attrib['value'] = "0"
         else:
             if foundVal == "" or foundVal == "[]":
                 print "%s Value is null in config file" %name
@@ -556,6 +560,10 @@ def readWriteConfigValue(configFile):
 
             else:
                 val = foundVal
+
+                if val is None:
+                    val = 0
+
                 child.attrib['value'] = str(val)
                 #print "%s\t%s" %(name,getConfValue(mapping[name]))
 
@@ -583,6 +591,9 @@ def getConfValue(confStr):
     for com in confStrArray:
         currentPath += com
 
+        if not currentConfig:
+            break
+
         #system.cpu0 will not be found we have make it like [system][cpu][0]
         if com not in currentConfig:
            if com[:3] == "cpu":
@@ -593,7 +604,7 @@ def getConfValue(confStr):
             currentConfig = currentConfig[com][0]
         elif com == "isa":
             currentConfig = currentConfig[com][0]
-        else:
+        elif currentConfig:
             currentConfig = currentConfig[com]                      #every time assign sub component
 
         currentPath += "."
@@ -626,7 +637,7 @@ def writeStatValue(mcpatTemplateFile):
     for no in range(0,noCores):
         if noCores == 1:
             stats["system.total_cycles"] = stats["system.cpu.numCycles"]                               #If we have only 1 core so we have only 'cpu' or 'core' not 'cpu0' or 'core0'
-            stats["system.idle_cycles"] = stats["system.cpu.idleCycles"]
+            stats["system.idle_cycles"] = stats.get("system.cpu.idleCycles", stats.get("system.cpu.num_idle_cycles"))
         else:
             try:
                 stats["system.total_cycles"] += stats["system.cpu"+str(no)+".numCycles"]
@@ -638,20 +649,20 @@ def writeStatValue(mcpatTemplateFile):
                 stats["system.cpu" + str(no) + ".idleCycles"] = 0
 
     mapping ["system.busy_cycles"] = "system.busy_cycles"
-    stats["system.busy_cycles"] = stats["system.total_cycles"] - stats["system.idle_cycles"]
+    stats["system.busy_cycles"] = stats.get("system.cpu.num_busy_cycles", stats["system.total_cycles"] - stats["system.idle_cycles"])
 
 
     for no in range(0,noCores):
 
         mapping ["system.core"+str(no)+".total_instructions"] = "system.cpu"+str(no)+".decode.DecodedInsts"
 
-        mapping ["system.core"+str(no)+".int_instructions"] = "default"
-        mapping ["system.core"+str(no)+".fp_instructions"] = "default"
+        mapping ["system.core"+str(no)+".int_instructions"] = "system.cpu"+str(no)+".num_int_insts"
+        mapping ["system.core"+str(no)+".fp_instructions"] = "system.cpu"+str(no)+".num_fp_insts"
 
         mapping ["system.core"+str(no)+".branch_instructions"] = "system.cpu"+str(no)+".branchPred.condPredicted"
         mapping ["system.core"+str(no)+".branch_mispredictions"] = "system.cpu"+str(no)+".branchPred.condIncorrect"
-        mapping ["system.core"+str(no)+".load_instructions"] = "system.cpu"+str(no)+".iew.iewExecLoadInsts"
-        mapping ["system.core"+str(no)+".store_instructions"] = "system.cpu"+str(no)+".iew.exec_stores"
+        mapping ["system.core"+str(no)+".load_instructions"] = "system.cpu"+str(no)+".num_load_insts"
+        mapping ["system.core"+str(no)+".store_instructions"] = "system.cpu"+str(no)+".num_store_insts"
         mapping ["system.core"+str(no)+".committed_int_instructions"] = "system.cpu"+str(no)+".commit.int_insts"
         mapping ["system.core"+str(no)+".committed_fp_instructions"] = "system.cpu"+str(no)+".commit.fp_insts"
         mapping ["system.core"+str(no)+".committed_instructions"] = "system.core"+str(no)+".committed_instructions"
@@ -659,12 +670,12 @@ def writeStatValue(mcpatTemplateFile):
             try:
                 stats["system.core.committed_instructions"] = stats["system.cpu.commit.int_insts"] + stats["system.cpu.commit.fp_insts"]
             except KeyError:
-                stats["system.core.committed_instructions"] = 0
+                stats["system.core.committed_instructions"] = stats.get("system.cpu.committedInsts", 0)
         else:
             try:
                 stats ["system.core"+str(no)+".committed_instructions"] = stats["system.cpu"+str(no)+".commit.int_insts"] + stats["system.cpu"+str(no)+".commit.fp_insts"]
             except KeyError:
-                stats["system.core" + str(no) + ".committed_instructions"] = 0
+                stats["system.core" + str(no) + ".committed_instructions"] = stats.get("system.cpu"+ str(no) +".committedInsts", 0)
 
         mapping ["system.core"+str(no)+".pipeline_duty_cycle"] = "system.cpu"+str(no)+".ipc_total"
         mapping ["system.core"+str(no)+".total_cycles"] = "system.cpu"+str(no)+".numCycles"
@@ -750,8 +761,8 @@ def writeStatValue(mcpatTemplateFile):
 
         mapping ["system.core"+str(no)+".context_switches"] = "default"
 
-        mapping ["system.core"+str(no)+".ialu_accesses"] = "system.cpu"+str(no)+".iq.int_alu_accesses"
-        mapping ["system.core"+str(no)+".fpu_accesses"] = "system.cpu"+str(no)+".iq.fp_alu_accesses"
+        mapping ["system.core"+str(no)+".ialu_accesses"] = "system.cpu"+str(no)+".num_int_alu_accesses"
+        mapping ["system.core"+str(no)+".fpu_accesses"] = "system.cpu"+str(no)+".num_fp_alu_accesses"
         mapping ["system.core"+str(no)+".mul_accesses"] = "system.core"+str(no)+".mul_accesses"
         if noCores == 1:
             try:
@@ -764,7 +775,7 @@ def writeStatValue(mcpatTemplateFile):
             except KeyError:
                 stats["system.core" + str(no) + ".mul_accesses"] = 0
 
-        mapping ["system.core"+str(no)+".cdb_alu_accesses"] = "system.cpu"+str(no)+".iq.int_alu_accesses"
+        mapping ["system.core"+str(no)+".cdb_alu_accesses"] = "system.cpu"+str(no)+".num_int_alu_accesses"
         mapping ["system.core"+str(no)+".cdb_mul_accesses"] = "system.core"+str(no)+".cdb_mul_accesses"
         if noCores == 1:
             try:
